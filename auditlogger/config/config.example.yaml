@@ -1,0 +1,12 @@
+storage:
+  log_file: logs/audit.jsonl
+  archive_dir: logs/archive
+  backup_dirs: []
+
+telegram:
+  enabled: false
+  bot_token: ""
+  chat_id: ""
+
+scheduler:
+  windows_startup_task_name: AuditLogger
