@@ -1,65 +1,165 @@
 # AuditLogger
 
-AuditLogger is a Windows-focused Python project for collecting network and system audit data, writing tamper-evident JSON logs, and notifying a Telegram channel when the external IP address changes.
+AuditLogger is a Windows-focused Python audit utility that records network and system identity data in tamper-evident JSONL logs. It can also notify a Telegram chat when the external IP address changes between runs.
 
-## Version plan
+## Features
 
-### v1
+- Runs manually or through Windows Task Scheduler at user logon
+- Records external IP address
+- Records local IP address
+- Records the Windows adapter name associated with the selected local IP
+- Records the adapter MAC address
+- Records hostname, platform, and system boot time
+- Writes newline-delimited JSON logs
+- Adds SHA256 hashes to each stored event
+- Links each event to the previous event hash
+- Sends Telegram notifications when the external IP changes
 
-- Run at Windows startup
-- Record external IP
-- Record local IP
-- Record MAC address
-- Record hostname
-- Record system boot time
-- Store events in JSONL
-- Calculate SHA256 event hashes
-- Send Telegram notification when the external IP changes
+## Requirements
 
-### v2
+- Windows
+- Python 3.11 or newer
+- Optional: Telegram bot token and chat ID for notifications
 
-- Hash chain across events
-- Daily archive
-- Report export
-- Log integrity verification
-- Backups
+The project currently uses only the Python standard library at runtime.
 
-### v3
+## Installation
 
-- Digital signatures for logs
-- Multiple independent hash storage locations
-- Web interface for event browsing
+Clone the repository, then open PowerShell in the project root:
 
-## Project layout
-
-```text
-auditlogger/
-├── collector/
-│   ├── network.py
-│   ├── system.py
-│   └── timecheck.py
-├── storage/
-│   ├── json_logger.py
-│   ├── hashchain.py
-│   └── archive.py
-├── notifications/
-│   ├── telegram.py
-│   └── email.py
-├── scheduler/
-│   └── tasks.py
-├── config/
-│   └── config.yaml
-└── main.py
+```powershell
+cd "W:\Projects\IP Address Logging"
 ```
 
-## Quick start
+Create a local config file:
 
-1. Copy `auditlogger/config/config.example.yaml` to `auditlogger/config/config.yaml`.
-2. Fill Telegram settings if notifications are needed.
-3. Run:
+```powershell
+Copy-Item .\auditlogger\config\config.example.yaml .\auditlogger\config\config.yaml
+```
+
+Edit `auditlogger/config/config.yaml`.
+
+For logging only:
+
+```yaml
+telegram:
+  enabled: false
+  bot_token: ""
+  chat_id: ""
+```
+
+For Telegram notifications:
+
+```yaml
+telegram:
+  enabled: true
+  bot_token: "YOUR_BOT_TOKEN"
+  chat_id: "YOUR_CHAT_ID"
+```
+
+## Usage
+
+Run one audit event manually:
 
 ```powershell
 python -m auditlogger.main
 ```
 
-Logs are written to `logs/audit.jsonl` by default.
+Logs are written to:
+
+```text
+logs/audit.jsonl
+```
+
+Each log entry contains:
+
+- UTC timestamp
+- Local timestamp with timezone offset
+- External IP
+- Local IP
+- Adapter name
+- MAC address
+- Hostname
+- Platform
+- Boot time
+- Previous event hash
+- Current event hash
+
+## Windows Startup Task
+
+AuditLogger includes a helper for creating a Windows Task Scheduler task that runs at user logon.
+
+From the project root:
+
+```powershell
+python -c "from auditlogger.scheduler.tasks import create_windows_startup_task; r = create_windows_startup_task(); print(r.returncode); print(r.stdout); print(r.stderr)"
+```
+
+Verify the task:
+
+```powershell
+schtasks /Query /TN AuditLogger
+```
+
+The task runs:
+
+```powershell
+python -m auditlogger.main
+```
+
+Current behavior is one run per logon. AuditLogger does not run as a continuous background service yet.
+
+## Project Layout
+
+```text
+auditlogger/
+├── collector/
+│   ├── network.py      # External IP, local IP, adapter name, MAC address
+│   ├── system.py       # Hostname, platform, boot time
+│   └── timecheck.py    # UTC and local timestamps
+├── config/
+│   ├── config.example.yaml
+│   └── loader.py       # Config loading with a small YAML fallback
+├── notifications/
+│   ├── telegram.py     # Telegram Bot API client
+│   └── email.py        # Future email notification placeholder
+├── scheduler/
+│   └── tasks.py        # Windows Task Scheduler helper
+├── storage/
+│   ├── archive.py      # Future archive placeholder
+│   ├── hashchain.py    # Event hashing helpers
+│   └── json_logger.py  # JSONL log storage
+└── main.py             # Main runtime flow
+```
+
+## Testing
+
+Run the test suite:
+
+```powershell
+python -m unittest discover -s tests
+```
+
+## Security Notes
+
+Audit logs contain sensitive local machine and network identifiers, including hostname, IP addresses, adapter name, MAC address, platform, and boot time.
+
+The repository ignores local runtime data by default:
+
+- `logs/`
+- `auditlogger/config/config.yaml`
+- `.agents/`
+- Python caches
+
+Do not commit real Telegram tokens, chat IDs, or production audit logs.
+
+## Roadmap
+
+Planned future work:
+
+- Full hash-chain verification across all events
+- Daily archives
+- Report export
+- Backups
+- Digital signatures
+- Web interface for browsing events
