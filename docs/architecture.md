@@ -66,6 +66,8 @@ One execution of the application should produce one consistent audit snapshot.
 
 Providers should avoid repeated collection of the same information unless explicitly required.
 
+Collectors should fail independently. A failure in one collector must not prevent the application from producing a valid snapshot using the remaining collectors.
+
 ---
 
 # High-Level Architecture
