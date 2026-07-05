@@ -10,3 +10,19 @@ telegram:
 
 scheduler:
   windows_startup_task_name: AuditLogger
+
+router:
+
+  enabled: false
+
+  connection:
+
+      address:
+      username:
+      password:
+      timeout:
+      verify_tls:
+
+  detection:
+
+      type: auto
