@@ -7,6 +7,8 @@ import subprocess
 import urllib.error
 import urllib.request
 
+from .router import collect_router_info
+
 
 def get_external_ip(timeout_seconds: float = 5.0) -> str | None:
     """Return the public IPv4 address reported by the first reachable endpoint."""
@@ -112,10 +114,14 @@ def collect_network_info() -> dict:
     """Collect the network fields written into an audit event."""
     local_ip = get_local_ip()
     adapter = get_windows_adapter_for_ip(local_ip) or {}
-
-    return {
+    router_info = collect_router_info()
+    result = {
         "external_ip": get_external_ip(),
         "local_ip": local_ip,
         "adapter_name": adapter.get("adapter_name"),
         "mac": adapter.get("mac"),
     }
+    if router_info:
+        result["router"] = router_info
+
+    return result
