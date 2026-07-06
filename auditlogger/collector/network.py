@@ -110,11 +110,11 @@ def get_windows_adapter_for_ip(local_ip: str | None) -> dict | None:
     return _parse_ipconfig_adapter(result.stdout, local_ip)
 
 
-def collect_network_info() -> dict:
+def collect_network_info(config: dict) -> dict:
     """Collect the network fields written into an audit event."""
     local_ip = get_local_ip()
     adapter = get_windows_adapter_for_ip(local_ip) or {}
-    router_info = collect_router_info()
+    router_info = collect_router_info(config) # paste config.get("router", {})
     result = {
         "external_ip": get_external_ip(),
         "local_ip": local_ip,

@@ -12,12 +12,12 @@ from auditlogger.storage.hashchain import build_hashed_event
 from auditlogger.storage.json_logger import JsonLogger
 
 
-def build_event() -> dict:
+def build_event(config: dict) -> dict:
     """Build the unhashed audit event payload from current system state."""
     return {
         "timestamp_utc": utc_now_iso(),
         "timestamp_local": local_now_iso(),
-        "network": collect_network_info(),
+        "network": collect_network_info(config["router"]),
         "system": collect_system_info(),
     }
 
@@ -28,7 +28,7 @@ def run_once(config_path: str | Path | None = None) -> dict:
     logger = JsonLogger(config["storage"]["log_file"])
     previous_event = logger.read_last_event()
 
-    event = build_event()
+    event = build_event(config)
     hashed_event = build_hashed_event(event, previous_event)
     logger.append(hashed_event)
 

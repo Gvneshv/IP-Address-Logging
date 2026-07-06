@@ -35,7 +35,10 @@ class EventTests(unittest.TestCase):
         _collect_system_info,
     ) -> None:
         """Events should expose both local time and adapter-specific MAC data."""
-        event = build_event()
+        event = build_event(
+            {
+                "router": {}
+            })
 
         self.assertIn("timestamp_utc", event)
         self.assertIn("timestamp_local", event)
