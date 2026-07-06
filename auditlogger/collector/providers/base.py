@@ -6,7 +6,8 @@ from typing import Any
 
 
 class RouterProvider(ABC):
-    """Base interface for router data providers."""
+    """Base interface for router data providers.
+    Collects router information."""
 
     @abstractmethod
     def collect(self) -> dict[str, Any]:
