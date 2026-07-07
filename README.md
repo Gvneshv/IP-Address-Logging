@@ -14,14 +14,14 @@ AuditLogger is a Windows-focused Python audit utility that records network and s
 - Adds SHA256 hashes to each stored event
 - Links each event to the previous event hash
 - Sends Telegram notifications when the external IP changes
+- Router/WAN data collection (in progress) - see `docs/refactoring-roadmap.md`
 
 ## Requirements
 
 - Windows
 - Python 3.11 or newer
+- [`requests`](https://pypi.org/project/requests/) (used by the router HTTP client for router admin-panel communication)
 - Optional: Telegram bot token and chat ID for notifications
-
-The project currently uses only the Python standard library at runtime.
 
 ## Installation
 
@@ -109,27 +109,54 @@ python -m auditlogger.main
 
 Current behavior is one run per logon. AuditLogger does not run as a continuous background service yet.
 
+### Removing the startup task
+
+```powershell
+schtasks /Delete /TN AuditLogger /F
+```
+
+Or via the GUI: **Task Scheduler → Task Scheduler Library → right-click "AuditLogger" → Delete**.
+
 ## Project Layout
 
 ```text
-auditlogger/
-├── collector/
-│   ├── network.py      # External IP, local IP, adapter name, MAC address
-│   ├── system.py       # Hostname, platform, boot time
-│   └── timecheck.py    # UTC and local timestamps
-├── config/
-│   ├── config.example.yaml
-│   └── loader.py       # Config loading with a small YAML fallback
-├── notifications/
-│   ├── telegram.py     # Telegram Bot API client
-│   └── email.py        # Future email notification placeholder
-├── scheduler/
-│   └── tasks.py        # Windows Task Scheduler helper
-├── storage/
-│   ├── archive.py      # Future archive placeholder
-│   ├── hashchain.py    # Event hashing helpers
-│   └── json_logger.py  # JSONL log storage
-└── main.py             # Main runtime flow
+IP Address Logging/
+├──  auditlogger/
+│     ├── collector/
+│     │   ├── network.py      # External IP, local IP, adapter name, MAC address
+│     │   ├── router/
+│     │   │   ├── base.py       # RouterProvider - abstract provider interface
+│     │   │   ├── connection.py # RouterConnection - connection/credential parameters
+│     │   │   ├── client.py     # RouterClient - shared HTTP session handling
+│     │   │   └── detection.py  # AutoDetectionProvider - current default (stub)
+│     │   ├── system.py       # Hostname, platform, boot time
+│     │   └── timecheck.py    # UTC and local timestamps
+│     ├── config/
+│     │   ├── config.example.yaml
+│     │   └── loader.py       # Config loading with a small YAML fallback
+│     ├── notifications/
+│     │   ├── telegram.py     # Telegram Bot API client
+│     │   └── email.py        # Future email notification placeholder
+│     ├── scheduler/
+│     │   └── tasks.py        # Windows Task Scheduler helper
+│     ├── storage/
+│     │   ├── archive.py      # Future archive placeholder
+│     │   ├── hashchain.py    # Event hashing helpers
+│     │   └── json_logger.py  # JSONL log storage
+│     └── main.py             # Main runtime flow
+├── docs/
+│   ├── architecture.md
+│   └── refactoring-roadmap.md
+├── logs/ # gitignored
+├── tests/
+│     ├── test_event.py
+│     ├── test_loader.py
+│     ├── test_network.py
+│     └── test_router.py
+├── .gitignore
+├──CHANGELOG.md
+├──pyproject.toml
+└── README.md
 ```
 
 ## Testing
@@ -158,6 +185,7 @@ Do not commit real Telegram tokens, chat IDs, or production audit logs.
 Planned future work:
 
 - Full hash-chain verification across all events
+- Router/WAN change detection
 - Daily archives
 - Report export
 - Backups

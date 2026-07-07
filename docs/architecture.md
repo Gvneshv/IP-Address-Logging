@@ -192,16 +192,21 @@ Router-specific implementations should remain isolated.
 
 Example:
 
-router/
+auditlogger/collector/router/
 
-base.py
+base.py       # RouterProvider - abstract interface every provider implements
 
-tplink.py
+connection.py # RouterConnection - connection/credential parameters
 
+client.py     # RouterClient - shared HTTP session handling (requests-based)
+
+detection.py  # AutoDetectionProvider - current default, returns {} (not yet implemented)
+
+__init__.py   # collect_router_info() - orchestrator; selects a provider from config["router"]["detection"]["type"] and delegates to it
+
+tplink.py     # future vendor providers follow the same RouterProvider interface
 mikrotik.py
-
 asus.py
-
 keenetic.py
 
 The application should communicate only with the common interface.
