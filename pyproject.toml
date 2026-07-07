@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Windows audit logger for IP, network, and system events."
 requires-python = ">=3.11"
 dependencies = [
+    "requests>=2.31",
 ]
 
 [project.scripts]
