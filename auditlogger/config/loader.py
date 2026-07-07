@@ -23,32 +23,51 @@ def _parse_scalar(value: str) -> Any:
     return value
 
 
-def _load_simple_yaml(text: str) -> dict[str, Any]:
-    """Load the simple section/key YAML shape used by the example config."""
-    result: dict[str, Any] = {}
-    current_section: dict[str, Any] | None = None
+def _indent_of(raw_line: str) -> int:
+    """Return the number of leading spaces on a config line."""
+    return len(raw_line) - len(raw_line.lstrip(" "))
 
+
+def _load_simple_yaml(text: str) -> dict[str, Any]:
+    """Load the indentation-nested section/key YAML shape used by the config.
+
+    Supports arbitrary nesting depth (e.g. router -> connection -> address), which the config now requires.
+    A "key:" line with nothing after the colon is treated as the start of a nested section only when the next non-blank line is indented further;
+    otherwise it's an empty scalar (matches how a genuinely blank value like "address:" should behave).
+    This is still a deliberately minimal parser - no lists of mappings, multi-line strings, or other full-YAML features are supported.
+    Prefer installing PyYAML for anything beyond this project's own config shape.
+    """
+    lines: list[tuple[int, str]] = []
     for raw_line in text.splitlines():
         line = raw_line.split("#", 1)[0].rstrip()
-        if not line.strip():
+        if line.strip():
+            lines.append((_indent_of(raw_line), line.strip()))
+
+    root: dict[str, Any] = {}
+    # Stack of (indent_level, dict_at_that_level); root sits below indent 0.
+    stack: list[tuple[int, dict[str, Any]]] = [(-1, root)]
+
+    for index, (indent, key_part) in enumerate(lines):
+        while stack and indent <= stack[-1][0]:
+            stack.pop()
+        parent = stack[-1][1]
+
+        if ":" not in key_part:
             continue
 
-        if not raw_line.startswith(" ") and line.endswith(":"):
-            section_name = line[:-1].strip()
-            current_section = {}
-            result[section_name] = current_section
-            continue
+        key, _, value = key_part.partition(":")
+        key = key.strip()
+        value = value.strip()
 
-        if current_section is not None and raw_line.startswith("  ") and ":" in line:
-            key, value = line.split(":", 1)
-            current_section[key.strip()] = _parse_scalar(value)
-            continue
+        next_indent = lines[index + 1][0] if index + 1 < len(lines) else -1
+        if not value and next_indent > indent:
+            new_section: dict[str, Any] = {}
+            parent[key] = new_section
+            stack.append((indent, new_section))
+        else:
+            parent[key] = _parse_scalar(value)
 
-        if ":" in line:
-            key, value = line.split(":", 1)
-            result[key.strip()] = _parse_scalar(value)
-
-    return result
+    return root
 
 
 def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
