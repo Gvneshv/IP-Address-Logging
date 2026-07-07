@@ -7,7 +7,7 @@ import subprocess
 import urllib.error
 import urllib.request
 
-from .router import collect_router_info
+from ..router import collect_router_info
 
 
 def get_external_ip(timeout_seconds: float = 5.0) -> str | None:
@@ -110,11 +110,15 @@ def get_windows_adapter_for_ip(local_ip: str | None) -> dict | None:
     return _parse_ipconfig_adapter(result.stdout, local_ip)
 
 
-def collect_network_info(config: dict) -> dict:
-    """Collect the network fields written into an audit event."""
+def collect_network_info(router_config: dict) -> dict:
+    """Collect the network fields written into an audit event.
+
+    router_config is the "router" section of the app config (main.py passes config["router"] in),
+    not the full config - the parameter name reflects that so it isn't mistaken for the whole app config further down.
+    """
     local_ip = get_local_ip()
     adapter = get_windows_adapter_for_ip(local_ip) or {}
-    router_info = collect_router_info(config) # paste config.get("router", {})
+    router_info = collect_router_info(router_config)
     result = {
         "external_ip": get_external_ip(),
         "local_ip": local_ip,
