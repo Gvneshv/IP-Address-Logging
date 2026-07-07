@@ -4,7 +4,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from auditlogger.router import collect_router_info
+from auditlogger.collector.router import collect_router_info
 
 
 class RouterOrchestrationTests(unittest.TestCase):
@@ -14,7 +14,7 @@ class RouterOrchestrationTests(unittest.TestCase):
         """A disabled router config should never invoke a provider."""
         self.assertEqual(collect_router_info({"enabled": False}), {})
 
-    @patch("auditlogger.router.AutoDetectionProvider.collect", return_value={"wan_ip": "10.0.0.1"})
+    @patch("auditlogger.collector.router.AutoDetectionProvider.collect", return_value={"wan_ip": "10.0.0.1"})
     def test_enabled_auto_detection_delegates_to_provider(self, _mock_collect) -> None:
         """An enabled auto-detection config should return the provider's collected data."""
         result = collect_router_info({"enabled": True, "detection": {"type": "auto"}})

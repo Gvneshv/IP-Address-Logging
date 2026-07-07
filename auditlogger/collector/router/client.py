@@ -3,7 +3,8 @@ HTTP client for router communication. Currently a placeholder. Future versions w
 """
 
 import requests
-from connection import RouterConnection
+
+from .connection import RouterConnection
 
 
 class RouterClient:

@@ -7,7 +7,7 @@ import subprocess
 import urllib.error
 import urllib.request
 
-from ..router import collect_router_info
+from .router import collect_router_info
 
 
 def get_external_ip(timeout_seconds: float = 5.0) -> str | None:
