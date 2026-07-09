@@ -12,17 +12,12 @@ scheduler:
   windows_startup_task_name: AuditLogger
 
 router:
-
-  enabled: false
-
+  enabled: true
   connection:
-
-      address:
-      username:
-      password:
-      timeout:
-      verify_tls:
-
+    address: "http://192.168.0.1"   # your router's actual admin URL
+    username: "admin"
+    password: "YOUR_ADMIN_PASSWORD"  # the router admin login, not the WiFi password
+    timeout: 30
+    verify_tls: false
   detection:
-
-      type: auto
+    type: "tplink"
