@@ -52,6 +52,25 @@ def _detect_notifiable_changes(
     return changes
 
 
+def detect_capabilities(config: dict, network_info: dict) -> dict[str, object]:
+    """Summarize which optional data sources produced data this run.
+
+    This is diagnostic output for the person running AuditLogger (see docs/architecture.md's "Capability Detection" section) - it summarizes the event,
+    it is never persisted into the hashed audit event itself.
+    """
+    router_config = config.get("router", {})
+    router_info = network_info.get("router", {})
+    router_enabled = bool(router_config.get("enabled", False))
+
+    return {
+        "public_ip_lookup": bool(network_info.get("external_ip")),
+        "router_enabled": router_enabled,
+        "router_detected": bool(router_info),
+        "router_vendor": router_config.get("detection", {}).get("type") if router_enabled else None,
+        "wan_ip_supported": bool(router_info.get("wan_ip")),
+    }
+
+
 def run_once(config_path: str | Path | None = None) -> dict:
     """Collect, hash, persist, and optionally notify for a single audit event."""
     config = load_config(config_path)
@@ -80,9 +99,15 @@ def run_once(config_path: str | Path | None = None) -> dict:
 
 
 def main() -> None:
-    """Run the command-line entry point and print the stored event hash."""
-    event = run_once()
-    print(f"Audit event written: {event['hash']}")
+    """Run the command-line entry point and print the stored event hash and capabilities."""
+    hashed_event = run_once()
+    print(f"Audit event written: {hashed_event['hash']}")
+
+    config = load_config()
+    capabilities = detect_capabilities(config, hashed_event["event"]["network"])
+    print("Detected capabilities:")
+    for label, value in capabilities.items():
+        print(f"  {label}: {value}")
 
 
 if __name__ == "__main__":
