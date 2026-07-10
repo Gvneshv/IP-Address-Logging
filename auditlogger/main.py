@@ -7,6 +7,7 @@ from auditlogger.collector.network import collect_network_info
 from auditlogger.collector.system import collect_system_info
 from auditlogger.collector.timecheck import local_now_iso, utc_now_iso
 from auditlogger.config.loader import load_config
+from auditlogger.logging_config import configure_logging
 from auditlogger.notifications.telegram import TelegramNotifier
 from auditlogger.storage.hashchain import build_hashed_event
 from auditlogger.storage.json_logger import JsonLogger
@@ -54,6 +55,8 @@ def _detect_notifiable_changes(
 def run_once(config_path: str | Path | None = None) -> dict:
     """Collect, hash, persist, and optionally notify for a single audit event."""
     config = load_config(config_path)
+    configure_logging(config)
+
     logger = JsonLogger(config["storage"]["log_file"])
     previous_event = logger.read_last_event()
 

@@ -21,3 +21,7 @@ router:
     verify_tls: false
   detection:
     type: "tplink"
+
+logging:
+  level: INFO
+  log_file: logs/auditlogger.log
