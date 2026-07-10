@@ -8,12 +8,15 @@ auto-selects the right client class for the detected router model.
 """
 
 from __future__ import annotations
+import logging
 from typing import Any
 
 from tplinkrouterc6u import TplinkRouterProvider
 
 from .base import RouterProvider
 from .connection import RouterConnection
+
+logger = logging.getLogger(__name__)
 
 
 class TplinkProvider(RouterProvider):
@@ -25,13 +28,9 @@ class TplinkProvider(RouterProvider):
     def collect(self) -> dict[str, Any]:
         """Return WAN/gateway/DNS info, or {} if the router can't be reached.
 
-        Any auth, network, or library error here is swallowed rather than
-        raised: per docs/architecture.md, collectors must fail independently
-        without breaking the rest of the audit snapshot. This currently
-        catches the broad Exception class, since tplinkrouterc6u's specific
-        exception hierarchy isn't something I've verified against a live
-        router - narrowing this once real failure modes are observed (e.g.
-        wrong password vs. router unreachable) would be a good follow-up.
+        Any auth, network, or library error here is logged and swallowed rather than raised:
+        per docs/architecture.md, collectors must fail independently without breaking the rest of the audit snapshot.
+        This currently catches the broad Exception class, since tplinkrouterc6u's specific exception hierarchy isn't something I've verified against a live router - narrowing this once real failure modes are observed (e.g. wrong password vs. router unreachable) would be a good follow-up.
         """
         router = TplinkRouterProvider.get_client(
             self._connection.address,
@@ -44,7 +43,10 @@ class TplinkProvider(RouterProvider):
         try:
             router.authorize()
             status = router.get_ipv4_status()
-        except Exception:
+        except Exception as error:
+            logger.warning(
+                "TP-Link router collection failed (%s): %s", self._connection.address, error
+            )
             return {}
         else:
             return {
@@ -56,5 +58,5 @@ class TplinkProvider(RouterProvider):
         finally:
             try:
                 router.logout()
-            except Exception:
-                pass
+            except Exception as error:
+                logger.debug("TP-Link router logout failed (non-fatal): %s", error)

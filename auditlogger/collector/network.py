@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import socket
 import subprocess
 import urllib.error
 import urllib.request
 
 from .router import collect_router_info
+
+logger = logging.getLogger(__name__)
 
 
 def get_external_ip(timeout_seconds: float = 5.0) -> str | None:
@@ -23,9 +26,11 @@ def get_external_ip(timeout_seconds: float = 5.0) -> str | None:
                 value = response.read().decode("utf-8").strip()
                 if value:
                     return value
-        except (urllib.error.URLError, TimeoutError, OSError):
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            logger.warning("External IP endpoint %s failed: %s", endpoint, error)
             continue
 
+    logger.error("All external IP endpoints failed; external_ip will be null this run")
     return None
 
 
@@ -35,10 +40,12 @@ def get_local_ip() -> str | None:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.connect(("8.8.8.8", 80))
             return sock.getsockname()[0]
-    except OSError:
+    except OSError as error:
+        logger.warning("UDP-connect method for local IP failed: %s", error)
         try:
             return socket.gethostbyname(socket.gethostname())
-        except OSError:
+        except OSError as error:
+            logger.error("Hostname-based local IP lookup also failed: %s", error)
             return None
 
 
@@ -101,10 +108,14 @@ def get_windows_adapter_for_ip(local_ip: str | None) -> dict | None:
             text=True,
             timeout=5,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired) as error:
+        logger.warning("Running 'ipconfig /all' failed: %s", error)
         return None
 
     if result.returncode != 0 or not result.stdout.strip():
+        logger.warning(
+            "'ipconfig /all' returned no usable output (exit code %s)", result.returncode
+        )
         return None
 
     return _parse_ipconfig_adapter(result.stdout, local_ip)
