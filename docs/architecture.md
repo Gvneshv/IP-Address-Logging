@@ -4,7 +4,7 @@
 
 This document describes the high-level architecture of the project, the responsibility of each module, and the design principles that should guide future development.
 
-It is intentionally focused on architecture rather than implementation details.
+It is intentionally focused on architecture rather than implementation details. For "what's here and how to run it," see the root README - this document only covers *why* things are shaped the way they are, and the rules new code should follow to stay consistent. If you're adding a directory or renaming a module, update README's layout tree; if you're adding or changing a design rule, it belongs here.
 
 ---
 
@@ -70,6 +70,18 @@ Collectors should fail independently. A failure in one collector must not preven
 
 ---
 
+## Fail Loud, Not Silent
+
+A collector that fails independently (previous principle) must still be observable - it should never fail *invisibly*. Every caught exception that results in a fallback value (`None`, `{}`, `False`, etc.) must be logged before the fallback is returned, at a level matching its severity:
+
+- `warning` - a single attempt failed but the collector may still succeed via another path, or the failure only affects one optional field.
+- `error` - every fallback for a field was exhausted; that field will be null/empty in this run's event.
+- `debug` - failures with no practical consequence (e.g. a best-effort cleanup call failing).
+
+Logging must never change what's returned - only what's recorded about the failure. See `auditlogger/logging_config.py` for how output destinations (console, file) and level are configured.
+
+---
+
 # High-Level Architecture
 
     Application
@@ -78,6 +90,7 @@ Collectors should fail independently. A failure in one collector must not preven
     ├── Data Sources
     ├── Storage
     ├── Notifications
+    ├── Logging
     └── Scheduler
 
 ---
@@ -159,6 +172,15 @@ They never decide whether an event occurred.
 
 ---
 
+## Logging
+
+Responsible for recording what happened during a run - separate from the audit event JSONL, which records what was *observed*. Logging captures execution diagnostics (failures, fallbacks, timing), never the audited data itself.
+
+- One central configuration point (`auditlogger/logging_config.py`) driven by `config["logging"]`; individual modules only call `logging.getLogger(__name__)` and log - they never configure handlers themselves.
+- Logging is diagnostic, not a source of truth. The JSONL hash chain remains the only tamper-evident record; logs may be rotated, truncated, or disabled without affecting audit integrity.
+
+---
+
 ## Scheduler
 
 Responsible only for deciding when the application executes.
@@ -188,30 +210,24 @@ Adding a new provider should require creating a new module instead of modifying 
 
 # Router Integrations
 
-Router-specific implementations should remain isolated.
+Router-specific implementations should remain isolated under their own package, one level below the network collector that consumes them:
 
-Example:
+    auditlogger/collector/router/
 
-auditlogger/collector/router/
+    base.py       # RouterProvider - abstract interface every provider implements
+    connection.py # RouterConnection - connection/credential parameters
+    client.py      # RouterClient - shared HTTP session handling (requests-based)
+    detection.py  # AutoDetectionProvider - fallback default, returns {} (not yet implemented)
+    tplink.py     # TplinkProvider - wraps the tplinkrouterc6u library
+    __init__.py   # collect_router_info() - orchestrator; selects a provider from
+                  #   config["router"]["detection"]["type"] and delegates to it
+    mikrotik.py   # future vendor providers follow the same RouterProvider interface
+    asus.py
+    keenetic.py
 
-base.py       # RouterProvider - abstract interface every provider implements
+The application should communicate only with the common interface (`RouterProvider.collect()`), reached only through the orchestrator (`collect_router_info()`).
 
-connection.py # RouterConnection - connection/credential parameters
-
-client.py     # RouterClient - shared HTTP session handling (requests-based)
-
-detection.py  # AutoDetectionProvider - current default, returns {} (not yet implemented)
-
-__init__.py   # collect_router_info() - orchestrator; selects a provider from config["router"]["detection"]["type"] and delegates to it
-
-tplink.py     # future vendor providers follow the same RouterProvider interface
-mikrotik.py
-asus.py
-keenetic.py
-
-The application should communicate only with the common interface.
-
-It should not contain vendor-specific logic.
+It should not contain vendor-specific logic outside the individual provider modules. Where a vendor already has a well-tested open-source client library (as TP-Link does), prefer wrapping that library over reimplementing the vendor's login/API protocol from scratch - see `tplink.py`'s module docstring for the reasoning.
 
 ---
 
@@ -255,7 +271,7 @@ Detected capabilities:
 
 ✓ WAN IP supported
 
-Capability detection should improve usability while remaining optional.
+Capability detection should improve usability while remaining optional. It is diagnostic output for the person running the tool (printed after a run), not part of the persisted/hashed audit event - it summarizes the event, it doesn't become audited fact itself.
 
 ---
 
@@ -271,11 +287,11 @@ Notification modules should be testable without storage.
 
 # Documentation
 
-Code should explain how.
+- Code (docstrings, inline comments) explains *how* a specific implementation works.
+- This document explains *why* the project is shaped the way it is, and the rules new code should follow.
+- README explains *what* exists and how to run it.
 
-Comments should explain why.
-
-Architecture documents should explain responsibilities.
+When something changes, update the one of these three that actually answers "why did that change," not all three by default.
 
 ---
 
